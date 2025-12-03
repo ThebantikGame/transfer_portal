@@ -16,16 +16,46 @@
         import { getFirestore, doc, setDoc, onSnapshot, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Global Canvas variables (MANDATORY USE)
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'gh-pages-sync-portal'; 
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // =========================================================================
+        // === ВАЖНО: РУЧНАЯ НАСТРОЙКА FIREBASE (КЛЮЧИ ВЗЯТЫ ИЗ ВАШЕЙ КОНСОЛИ) ===
+        // =========================================================================
+
+        const EXTERNAL_FIREBASE_CONFIG = {
+            // Ключи из скриншота: изображение.png-e7e8913b-b23d-4c54-9e79-8d19a4e931fa
+            apiKey: "AIzaSyDwnzdPSkkSN_v715kZ_WlSMrLHlSIrtisPyK", 
+            authDomain: "quad-715a9.firebaseapp.com",
+            projectId: "quad-715a9", 
+            storageBucket: "quad-715a9.appspot.com",
+            messagingSenderId: "898041763356", 
+            appId: "1:898041763356:web:792f8669e08088e9cd31d9", 
+            measurementId: "G-SPJBMW31D7" // Дополнительный ID, также из скрина
+        };
+
+        // =========================================================================
+
+        let firebaseConfig;
+
+        if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+             try {
+                // Используем безопасную конфигурацию Canvas
+                firebaseConfig = JSON.parse(__firebase_config);
+             } catch (e) {
+                firebaseConfig = EXTERNAL_FIREBASE_CONFIG;
+             }
+        } else {
+             // Используем ручную конфигурацию для GitHub Pages
+             firebaseConfig = EXTERNAL_FIREBASE_CONFIG;
+        }
 
         let db;
         let auth;
         let userId = '';
         let isAuthReady = false;
 
-        const STORAGE_KEY = 'ultimate_transfer_content'; // Firestore document key
+        const STORAGE_KEY = 'ultimate_transfer_content'; 
 
         const inputField = document.getElementById('content-input');
         const statusText = document.getElementById('status-text');
@@ -73,15 +103,15 @@
         // --- FIREBASE INITIALIZATION AND AUTHENTICATION ---
 
         async function initializeFirebase() {
-            if (Object.keys(firebaseConfig).length === 0) {
-                 setStatus('Ошибка: Конфигурация Firebase отсутствует.', 'error');
+            if (Object.keys(firebaseConfig).length === 0 || !firebaseConfig.projectId) {
+                 setStatus('❌ Ошибка: Критическая ошибка в конфигурации Firebase.', 'error');
                  return;
             }
             
             try {
-                if (window.Telegram && Telegram.WebApp) Telegram.WebApp.showProgress(true); // Show native TWA loader
+                if (window.Telegram && Telegram.WebApp) Telegram.WebApp.showProgress(true);
                 
-                // setLogLevel('Debug'); // Uncomment for debugging
+                // setLogLevel('Debug');
                 
                 const app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
