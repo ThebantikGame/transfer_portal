@@ -3,171 +3,202 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Приватный Буфер Кода</title>
+    <title>Синхронный Буфер Кода</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Telegram Web App API (для тёмной темы и обратной связи) -->
+    <!-- Telegram Web App API (КРИТИЧЕСКИ ВАЖНО для MainButton и тем) -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            /* Цвет фона будет установлен из TWA API, но дадим тёмный дефолт */
-            background-color: #1a1a1a; 
-            color: #e0e0e0;
-            transition: background-color 0.3s;
-        }
-        .app-container {
-            /* Тёмный, приподнятый контейнер */
-            background-color: #27272a; 
-            border: 1px solid #3f3f46;
-        }
-        .textarea-custom {
-            /* Стили для поля ввода */
-            min-height: 300px; 
-            background-color: #18181b; 
-            color: #f4f4f5; 
-            border-color: #4b5563;
-        }
+    
+    <!-- Firebase Imports -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        /* Применяем цветовую схему TWA, если доступно */
-        :root[data-color-scheme="dark"] {
-            /* TWA Dark Mode */
-        }
-        :root[data-color-scheme="light"] {
-            /* TWA Light Mode (на всякий случай) */
-            background-color: #f3f4f6;
-            color: #1f2937;
-        }
-    </style>
-</head>
-<body class="p-4 md:p-8 min-h-screen flex flex-col items-center">
+        // Глобальные переменные Canvas
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-    <div class="max-w-3xl w-full">
-        <h1 class="text-2xl md:text-3xl font-bold text-center text-indigo-400 mb-6 pb-2">
-            Буфер Кода/Текста 🔐
-        </h1>
-        <p id="disclaimer" class="text-center text-sm text-gray-400 mb-6">
-            Ваши данные хранятся **только в браузере этого устройства**. Для переноса между ПК и телефоном, используйте функцию "Копировать" и "Вставить" вручную.
-        </p>
+        let db;
+        let auth;
+        let userId = '';
+        let isAuthReady = false;
 
-        <!-- Рабочая карточка -->
-        <div class="app-container p-5 md:p-8 rounded-2xl shadow-2xl">
-            <label for="content-input" class="block text-lg font-semibold text-gray-200 mb-3">
-                Рабочая область (100.000 символов):
-            </label>
-            <textarea id="content-input" 
-                      maxlength="100000"
-                      class="textarea-custom w-full p-4 rounded-xl border-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 text-base shadow-inner resize-none">
-            </textarea>
-            
-            <!-- Группа кнопок -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
-                
-                <button id="save-button" 
-                        class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition duration-300 shadow-md">
-                    💾 Сохранить Локально
-                </button>
+        const STORAGE_KEY = 'transfer_content'; // Ключ документа Firestore
 
-                <button id="load-button" 
-                        class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 rounded-xl transition duration-300 shadow-md">
-                    🔄 Загрузить (Из Памяти)
-                </button>
-                
-                <button id="copy-button" 
-                        class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl transition duration-300 shadow-md">
-                    📋 Копировать Все
-                </button>
-            </div>
-            
-        </div>
-        
-        <!-- Секция статуса -->
-        <div id="status-message" class="mt-6 text-center text-sm p-3 rounded-lg border bg-blue-800/20 text-blue-300 border-blue-500 w-full">
-            Добро пожаловать!
-        </div>
-
-    </div>
-
-    <script>
-        const STORAGE_KEY = 'privateTwaTransferBuffer';
         const inputField = document.getElementById('content-input');
-        const saveButton = document.getElementById('save-button');
-        const loadButton = document.getElementById('load-button');
+        const statusText = document.getElementById('status-text');
         const copyButton = document.getElementById('copy-button');
-        const statusMessage = document.getElementById('status-message');
+        const lastUpdatedText = document.getElementById('last-updated');
 
-        // --- УТИЛИТЫ TWA ---
+        // --- УТИЛИТЫ TWA И UI ---
 
-        // Установка статуса с TWA-уведомлением
-        function setStatus(text, type = 'info') {
-            let bgColor = 'bg-blue-800/20 text-blue-300 border-blue-500';
-            if (type === 'success') bgColor = 'bg-green-800/20 text-green-300 border-green-500';
-            if (type === 'error') bgColor = 'bg-red-800/20 text-red-300 border-red-500';
-            
-            statusMessage.className = `mt-6 text-center text-sm p-3 rounded-lg border w-full ${bgColor}`;
-            statusMessage.textContent = text;
-            
-            // Используем TWA API для кратких уведомлений (более заметно на телефоне)
-            if (window.Telegram && Telegram.WebApp) {
-                Telegram.WebApp.showPopup({
-                    message: text,
-                    buttons: [{ text: 'OK' }]
-                });
-            }
-        }
-        
-        // Применяем цвета TWA для бесшовного дизайна
         if (window.Telegram && Telegram.WebApp) {
             Telegram.WebApp.ready();
-            document.body.style.backgroundColor = Telegram.WebApp.themeParams.bg_color;
-            document.documentElement.setAttribute('data-color-scheme', Telegram.WebApp.colorScheme);
+            // Устанавливаем цвета из TWA для бесшовного дизайна
+            document.documentElement.style.setProperty('--bg-color', Telegram.WebApp.themeParams.bg_color);
+            document.documentElement.style.setProperty('--text-color', Telegram.WebApp.themeParams.text_color);
+            document.documentElement.style.setProperty('--hint-color', Telegram.WebApp.themeParams.hint_color);
+            document.documentElement.style.setProperty('--link-color', Telegram.WebApp.themeParams.link_color);
+
+            // Настраиваем Главную Кнопку TWA для сохранения
+            Telegram.WebApp.MainButton.setText('💾 СОХРАНИТЬ И СИНХРОНИЗИРОВАТЬ').show();
+            Telegram.WebApp.MainButton.onClick(saveContent);
         }
 
-
-        // --- ЛОКАЛЬНАЯ ЛОГИКА ---
-        
-        // Загрузка контента из localStorage
-        function loadContent() {
-            try {
-                const storedContent = localStorage.getItem(STORAGE_KEY);
-                if (storedContent !== null) {
-                    inputField.value = storedContent;
-                    setStatus('Контент успешно загружен из памяти устройства.', 'success');
+        // Вывод нативного уведомления TWA
+        function showTwaAlert(message, isError = false) {
+            if (window.Telegram && Telegram.WebApp) {
+                if (isError) {
+                    Telegram.WebApp.showAlert(`❌ Ошибка: ${message}`);
                 } else {
-                    inputField.value = '';
-                    setStatus('Локальный буфер пуст. Начните ввод.', 'info');
+                    Telegram.WebApp.showPopup({ message: message, buttons: [{ text: 'ОК' }] });
                 }
-            } catch (e) {
-                setStatus('Ошибка загрузки: не удалось получить данные из localStorage.', 'error');
-                console.error('Ошибка загрузки localStorage:', e);
+            } else {
+                console.log(message);
             }
         }
 
-        // Сохранение контента в localStorage
-        function saveContent() {
-            const content = inputField.value;
+        function setStatus(text, type = 'info') {
+            let color = 'text-gray-400';
+            if (type === 'success') color = 'text-green-400';
+            if (type === 'error') color = 'text-red-400';
+            
+            statusText.className = `text-sm mt-2 ${color}`;
+            statusText.textContent = text;
+        }
+
+        // --- ИНИЦИАЛИЗАЦИЯ FIREBASE И АУТЕНТИФИКАЦИЯ ---
+
+        async function initializeFirebase() {
+            if (Object.keys(firebaseConfig).length === 0) {
+                 setStatus('Ошибка: Конфигурация Firebase отсутствует.', 'error');
+                 return;
+            }
+            
             try {
-                if (content.length > 100000) {
-                     setStatus('Слишком много символов (Максимум 100,000).', 'error');
-                     return;
+                if (window.Telegram && Telegram.WebApp) Telegram.WebApp.showProgress(true); // Показываем TWA лоадер
+                
+                // setLogLevel('Debug'); // Раскомментировать для отладки
+                
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                // Аутентификация
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
                 }
-                localStorage.setItem(STORAGE_KEY, content);
-                setStatus('Контент успешно сохранен в локальную память устройства!', 'success');
-            } catch (e) {
-                setStatus('Ошибка сохранения. Память устройства переполнена или произошла ошибка.', 'error');
-                console.error('Ошибка сохранения localStorage:', e);
+                
+                userId = auth.currentUser?.uid || crypto.randomUUID();
+                isAuthReady = true;
+                
+                setStatus('Подключение успешно. Начинаем синхронизацию...', 'info');
+                startRealtimeListener();
+
+            } catch (error) {
+                console.error("Ошибка инициализации Firebase:", error);
+                setStatus(`Критическая ошибка: ${error.message}`, 'error');
+                showTwaAlert(`Не удалось подключиться: ${error.message}`, true);
+            } finally {
+                if (window.Telegram && Telegram.WebApp) Telegram.WebApp.showProgress(false);
             }
         }
 
-        // Копирование всего текста в буфер обмена
+        // --- FIREBASE: СЛУШАТЕЛЬ РЕАЛЬНОГО ВРЕМЕНИ (SYNCHRONOUS) ---
+        
+        // Путь к публичному документу для обмена (приватный в рамках этого App ID)
+        const transferPath = `artifacts/${appId}/public/data/shared_data/${STORAGE_KEY}`;
+
+        function startRealtimeListener() {
+            if (!db || !isAuthReady) return;
+
+            const docRef = doc(db, transferPath);
+
+            onSnapshot(docRef, (docSnapshot) => {
+                if (docSnapshot.exists()) {
+                    const data = docSnapshot.data();
+                    
+                    // Обновляем поле ввода, ТОЛЬКО если оно не активно (чтобы не мешать печатать)
+                    if (document.activeElement !== inputField) {
+                        inputField.value = data.content || '';
+                    }
+
+                    // Обновляем статус
+                    setStatus('Буфер синхронизирован с облаком.', 'success');
+                    
+                    if (data.timestamp) {
+                        const date = data.timestamp.toDate ? data.timestamp.toDate() : new Date();
+                        lastUpdatedText.textContent = date.toLocaleTimeString('ru-RU', {
+                            hour: '2-digit', minute: '2-digit', second: '2-digit'
+                        }) + " (Мгновенно)";
+                    } else {
+                        lastUpdatedText.textContent = 'Только что создан';
+                    }
+
+                } else {
+                    setStatus('Буфер пуст. Сохраните что-нибудь для обмена.', 'info');
+                    inputField.value = '';
+                    lastUpdatedText.textContent = '--';
+                }
+            }, (error) => {
+                console.error("Ошибка синхронизации:", error);
+                setStatus(`Ошибка синхронизации данных: ${error.message}`, 'error');
+            });
+        }
+        
+        // --- FIREBASE: СОХРАНЕНИЕ ДАННЫХ ---
+        
+        async function saveContent() {
+            if (!db || !userId || !isAuthReady) {
+                showTwaAlert("Сначала дождитесь инициализации приложения.", true);
+                return;
+            }
+
+            if (inputField.value.length > 100000) {
+                 showTwaAlert('Слишком много символов (Максимум 100,000).', true);
+                 return;
+            }
+
+            if (window.Telegram && Telegram.WebApp) Telegram.WebApp.MainButton.showLoader();
+            
+            try {
+                const docRef = doc(db, transferPath);
+                
+                await setDoc(docRef, {
+                    content: inputField.value,
+                    timestamp: serverTimestamp(),
+                    user_id: userId,
+                    app_id: appId
+                });
+                
+                showTwaAlert('✅ Данные успешно синхронизированы на все устройства!', false);
+
+            } catch (error) {
+                console.error("Ошибка сохранения данных:", error);
+                setStatus(`Ошибка сохранения: ${error.message}`, 'error');
+                showTwaAlert(`Не удалось сохранить: ${error.message}`, true);
+            } finally {
+                if (window.Telegram && Telegram.WebApp) Telegram.WebApp.MainButton.hideLoader();
+            }
+        }
+
+        // --- КОПИРОВАНИЕ ---
+
         async function copyToClipboard() {
             const content = inputField.value;
+            if (!content) {
+                showTwaAlert("Буфер пуст, нечего копировать.", true);
+                return;
+            }
             
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 try {
                     await navigator.clipboard.writeText(content);
-                    setStatus('Весь контент скопирован в буфер обмена!', 'success');
+                    showTwaAlert('📋 Весь контент скопирован в буфер обмена!', false);
                 } catch (err) {
                     fallbackCopy();
                 }
@@ -181,22 +212,107 @@
             inputField.select();
             try {
                 document.execCommand('copy');
-                setStatus('Весь контент скопирован (резервный метод)!', 'success');
+                showTwaAlert('📋 Контент скопирован (резервный метод)!', false);
             } catch (err) {
-                setStatus('Ошибка копирования. Попробуйте выделить и скопировать вручную.', 'error');
+                showTwaAlert('Ошибка копирования. Попробуйте выделить и скопировать вручную.', true);
                 console.error('Ошибка резервного копирования:', err);
             }
         }
         
         // --- ОБРАБОТЧИКИ ---
-
-        saveButton.addEventListener('click', saveContent);
-        loadButton.addEventListener('click', loadContent);
+        
         copyButton.addEventListener('click', copyToClipboard);
 
-        // Загрузка при старте
-        window.onload = loadContent;
+        // Запуск
+        window.onload = initializeFirebase;
 
     </script>
+    <style>
+        /* Переменные TWA */
+        :root {
+            --bg-color: #1a1a1a;
+            --text-color: #f4f4f5;
+            --hint-color: #a1a1aa;
+            --link-color: #6366f1;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s;
+        }
+        
+        .app-container {
+            background-color: #27272a; 
+            border: 1px solid #3f3f46;
+        }
+        .textarea-custom {
+            min-height: 350px; 
+            background-color: #18181b; 
+            color: var(--text-color); 
+            border-color: #4b5563;
+        }
+        
+        /* Кнопки, которые остаются в HTML */
+        .html-button {
+            background-color: #6366f1;
+            color: white;
+            transition: background-color 0.3s;
+        }
+        .html-button:hover {
+            background-color: #4f46e5;
+        }
+        
+        /* Стилизация для мобильных устройств */
+        @media (min-width: 640px) {
+            .textarea-custom {
+                min-height: 500px;
+            }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8 min-h-screen flex flex-col items-center">
+
+    <div class="max-w-3xl w-full">
+        <h1 class="text-2xl md:text-3xl font-bold text-center text-indigo-400 mb-6 pb-2">
+            🚀 Общий Буфер Кода (IMBA Sync)
+        </h1>
+        <p id="disclaimer" class="text-center text-sm text-gray-400 mb-6">
+            Ваш личный буфер, синхронизированный между всеми вашими устройствами.
+        </p>
+
+        <!-- Рабочая карточка -->
+        <div class="app-container p-5 md:p-8 rounded-2xl shadow-2xl">
+            <label for="content-input" class="block text-lg font-semibold text-gray-200 mb-3">
+                Рабочая область (до 100K символов):
+            </label>
+            <textarea id="content-input" 
+                      maxlength="100000"
+                      placeholder="Вставьте текст или код сюда..."
+                      class="textarea-custom w-full p-4 rounded-xl border-2 focus:ring-indigo-500 focus:border-indigo-500 text-base shadow-inner resize-none">
+            </textarea>
+            
+            <!-- Кнопка Копировать (остается в HTML, т.к. используется для всего поля) -->
+            <div class="mt-4">
+                <button id="copy-button" 
+                        class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl transition duration-300 shadow-lg">
+                    📋 Копировать Весь Контент
+                </button>
+            </div>
+            
+        </div>
+        
+        <!-- Секция статуса -->
+        <div class="mt-4 flex flex-col sm:flex-row justify-between items-center text-xs">
+            <p class="text-gray-500">Последнее обновление: <span id="last-updated">--</span></p>
+            <p id="status-text" class="text-sm mt-2 sm:mt-0 text-gray-400">Инициализация...</p>
+        </div>
+        
+        <p class="text-xs text-center text-gray-600 mt-8">
+            Сохранение выполняется через нативную синюю кнопку Telegram внизу экрана.
+        </p>
+
+    </div>
 </body>
 </html>
