@@ -20,18 +20,18 @@
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         // =========================================================================
-        // === ВАЖНО: РУЧНАЯ НАСТРОЙКА FIREBASE (КЛЮЧИ ВЗЯТЫ ИЗ ВАШЕЙ КОНСОЛИ) ===
+        // === ВАЖНО: РУЧНАЯ НАСТРОЙКА FIREBASE (КЛЮЧИ ИЗ ВАШЕЙ КОНСОЛИ QUAD) ===
         // =========================================================================
 
         const EXTERNAL_FIREBASE_CONFIG = {
-            // Ключи из скриншота: изображение.png-e7e8913b-b23d-4c54-9e79-8d19a4e931fa
+            // Эти ключи взяты из предоставленного вами скриншота "Add Firebase SDK"
             apiKey: "AIzaSyDwnzdPSkkSN_v715kZ_WlSMrLHlSIrtisPyK", 
             authDomain: "quad-715a9.firebaseapp.com",
             projectId: "quad-715a9", 
             storageBucket: "quad-715a9.appspot.com",
             messagingSenderId: "898041763356", 
             appId: "1:898041763356:web:792f8669e08088e9cd31d9", 
-            measurementId: "G-SPJBMW31D7" // Дополнительный ID, также из скрина
+            measurementId: "G-SPJBMW31D7"
         };
 
         // =========================================================================
@@ -80,10 +80,11 @@
         // Display native TWA notification
         function showTwaAlert(message, isError = false) {
             if (window.Telegram && Telegram.WebApp) {
+                // Используем showAlert для максимальной совместимости
                 if (isError) {
                     Telegram.WebApp.showAlert(`❌ Ошибка: ${message}`);
                 } else {
-                    Telegram.WebApp.showPopup({ message: message, buttons: [{ text: 'ОК' }] });
+                    Telegram.WebApp.showAlert(`✅ Успех: ${message}`);
                 }
             } else {
                 console.log(message);
@@ -108,8 +109,11 @@
                  return;
             }
             
+            // Проверка на существование showProgress перед вызовом! (Fixes the crash)
+            const twaShowProgress = window.Telegram && Telegram.WebApp && Telegram.WebApp.showProgress;
+
             try {
-                if (window.Telegram && Telegram.WebApp) Telegram.WebApp.showProgress(true);
+                if (twaShowProgress) Telegram.WebApp.showProgress(true);
                 
                 // setLogLevel('Debug');
                 
@@ -135,7 +139,7 @@
                 setStatus(`Критическая ошибка подключения: ${error.message}`, 'error');
                 showTwaAlert(`Не удалось подключиться: ${error.message}`, true);
             } finally {
-                if (window.Telegram && Telegram.WebApp) Telegram.WebApp.showProgress(false);
+                if (twaShowProgress) Telegram.WebApp.showProgress(false);
             }
         }
 
@@ -194,7 +198,8 @@
                  return;
             }
 
-            if (window.Telegram && Telegram.WebApp) Telegram.WebApp.MainButton.showLoader();
+            // MainButton methods are core and generally safe, but we keep the guard
+            if (window.Telegram && Telegram.WebApp && Telegram.WebApp.MainButton) Telegram.WebApp.MainButton.showLoader();
             
             try {
                 const docRef = doc(db, transferPath);
@@ -206,14 +211,14 @@
                     app_id: appId
                 });
                 
-                showTwaAlert('🚀 Данные успешно синхронизированы на все устройства!', false);
+                showTwaAlert('Данные успешно синхронизированы на все устройства!', false);
 
             } catch (error) {
                 console.error("Data save error:", error);
                 setStatus(`Ошибка сохранения: ${error.message}`, 'error');
                 showTwaAlert(`Не удалось сохранить: ${error.message}`, true);
             } finally {
-                if (window.Telegram && Telegram.WebApp) Telegram.WebApp.MainButton.hideLoader();
+                if (window.Telegram && Telegram.WebApp && Telegram.WebApp.MainButton) Telegram.WebApp.MainButton.hideLoader();
             }
         }
 
@@ -229,7 +234,7 @@
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 try {
                     await navigator.clipboard.writeText(content);
-                    showTwaAlert('📋 Весь контент скопирован в буфер обмена!', false);
+                    showTwaAlert('Весь контент скопирован в буфер обмена!', false);
                 } catch (err) {
                     fallbackCopy();
                 }
@@ -243,7 +248,7 @@
             inputField.select();
             try {
                 document.execCommand('copy');
-                showTwaAlert('📋 Контент скопирован (резервный метод)!', false);
+                showTwaAlert('Контент скопирован (резервный метод)!', false);
             } catch (err) {
                 showTwaAlert('Ошибка копирования. Попробуйте выделить и скопировать вручную.', true);
                 console.error('Fallback copy error:', err);
