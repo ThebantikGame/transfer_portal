@@ -60,6 +60,7 @@
         const inputField = document.getElementById('content-input');
         const statusText = document.getElementById('status-text');
         const copyButton = document.getElementById('copy-button');
+        const clearButton = document.getElementById('clear-button'); // New button
         const lastUpdatedText = document.getElementById('last-updated');
 
         // --- TWA UTILITIES AND UI SETUP ---
@@ -223,7 +224,14 @@
             }
         }
 
-        // --- COPY FUNCTIONALITY ---
+        // --- UTILITY FUNCTIONS ---
+        
+        function clearForm() {
+            // Clears the local field, but does NOT save the change to Firebase
+            inputField.value = '';
+            inputField.focus();
+            setStatus('Форма очищена локально. Нажмите "СОХРАНИТЬ", чтобы удалить контент со всех устройств.', 'info');
+        }
 
         async function copyToClipboard() {
             const content = inputField.value;
@@ -259,6 +267,7 @@
         // --- EVENT HANDLERS ---
         
         copyButton.addEventListener('click', copyToClipboard);
+        clearButton.addEventListener('click', clearForm); // New event listener
 
         // Start initialization
         window.onload = initializeFirebase;
@@ -294,13 +303,21 @@
             font-size: 16px; /* Larger font for readability */
         }
         
-        /* Copy button style (uses standard Tailwind classes) */
+        /* Button Styles */
         .copy-button {
             background-color: #4ade80; /* Green-400 */
             color: #1a1a1a;
         }
         .copy-button:hover {
             background-color: #16a34a; /* Green-600 */
+        }
+
+        .clear-button {
+            background-color: #f87171; /* Red-400 */
+            color: #1a1a1a;
+        }
+        .clear-button:hover {
+            background-color: #dc2626; /* Red-600 */
         }
         
         /* Mobile optimization */
@@ -332,13 +349,20 @@
                       class="textarea-custom w-full p-4 rounded-xl border-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-inner resize-none">
             </textarea>
             
-            <!-- Кнопка Копировать -->
-            <div class="mt-4">
+            <!-- Кнопки: Копировать и Очистить -->
+            <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <button id="copy-button" 
                         class="copy-button w-full font-bold py-4 rounded-xl transition duration-300 shadow-lg text-lg">
-                    📋 МГНОВЕННО СКОПИРОВАТЬ ВЕСЬ КОНТЕНТ
+                    📋 СКОПИРОВАТЬ
+                </button>
+                <button id="clear-button" 
+                        class="clear-button w-full font-bold py-4 rounded-xl transition duration-300 shadow-lg text-lg">
+                    🗑️ ОЧИСТИТЬ ФОРМУ
                 </button>
             </div>
+            <p class="text-xs text-center text-gray-500 mt-2">
+                "Очистить форму" стирает текст только здесь. Для синхронизации пустого буфера нажмите синюю кнопку.
+            </p>
             
         </div>
         
