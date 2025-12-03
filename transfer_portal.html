@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Синхронный Буфер Кода</title>
+    <title>ULTIMATE TWA SYNC PORTAL</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Telegram Web App API (КРИТИЧЕСКИ ВАЖНО для MainButton и тем) -->
+    <!-- Telegram Web App API (CRITICAL for MainButton and theming) -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
     <!-- Firebase Imports -->
@@ -15,7 +15,7 @@
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Глобальные переменные Canvas
+        // Global Canvas variables (MANDATORY USE)
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
@@ -25,29 +25,29 @@
         let userId = '';
         let isAuthReady = false;
 
-        const STORAGE_KEY = 'transfer_content'; // Ключ документа Firestore
+        const STORAGE_KEY = 'ultimate_transfer_content'; // Firestore document key
 
         const inputField = document.getElementById('content-input');
         const statusText = document.getElementById('status-text');
         const copyButton = document.getElementById('copy-button');
         const lastUpdatedText = document.getElementById('last-updated');
 
-        // --- УТИЛИТЫ TWA И UI ---
+        // --- TWA UTILITIES AND UI SETUP ---
 
         if (window.Telegram && Telegram.WebApp) {
             Telegram.WebApp.ready();
-            // Устанавливаем цвета из TWA для бесшовного дизайна
+            // Apply TWA theme colors for seamless integration
             document.documentElement.style.setProperty('--bg-color', Telegram.WebApp.themeParams.bg_color);
             document.documentElement.style.setProperty('--text-color', Telegram.WebApp.themeParams.text_color);
             document.documentElement.style.setProperty('--hint-color', Telegram.WebApp.themeParams.hint_color);
             document.documentElement.style.setProperty('--link-color', Telegram.WebApp.themeParams.link_color);
-
-            // Настраиваем Главную Кнопку TWA для сохранения
-            Telegram.WebApp.MainButton.setText('💾 СОХРАНИТЬ И СИНХРОНИЗИРОВАТЬ').show();
+            
+            // Set up the Native Telegram MainButton for saving (most reliable action)
+            Telegram.WebApp.MainButton.setText('💾 СОХРАНИТЬ И СИНХРОНИЗИРОВАТЬ 🚀').show();
             Telegram.WebApp.MainButton.onClick(saveContent);
         }
 
-        // Вывод нативного уведомления TWA
+        // Display native TWA notification
         function showTwaAlert(message, isError = false) {
             if (window.Telegram && Telegram.WebApp) {
                 if (isError) {
@@ -60,6 +60,7 @@
             }
         }
 
+        // Update status text on the UI
         function setStatus(text, type = 'info') {
             let color = 'text-gray-400';
             if (type === 'success') color = 'text-green-400';
@@ -69,7 +70,7 @@
             statusText.textContent = text;
         }
 
-        // --- ИНИЦИАЛИЗАЦИЯ FIREBASE И АУТЕНТИФИКАЦИЯ ---
+        // --- FIREBASE INITIALIZATION AND AUTHENTICATION ---
 
         async function initializeFirebase() {
             if (Object.keys(firebaseConfig).length === 0) {
@@ -78,15 +79,15 @@
             }
             
             try {
-                if (window.Telegram && Telegram.WebApp) Telegram.WebApp.showProgress(true); // Показываем TWA лоадер
+                if (window.Telegram && Telegram.WebApp) Telegram.WebApp.showProgress(true); // Show native TWA loader
                 
-                // setLogLevel('Debug'); // Раскомментировать для отладки
+                // setLogLevel('Debug'); // Uncomment for debugging
                 
                 const app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
 
-                // Аутентификация
+                // Authentication
                 if (initialAuthToken) {
                     await signInWithCustomToken(auth, initialAuthToken);
                 } else {
@@ -96,21 +97,21 @@
                 userId = auth.currentUser?.uid || crypto.randomUUID();
                 isAuthReady = true;
                 
-                setStatus('Подключение успешно. Начинаем синхронизацию...', 'info');
+                setStatus('🚀 Успешно подключено. Запускаем синхронизацию...', 'info');
                 startRealtimeListener();
 
             } catch (error) {
-                console.error("Ошибка инициализации Firebase:", error);
-                setStatus(`Критическая ошибка: ${error.message}`, 'error');
+                console.error("Firebase initialization error:", error);
+                setStatus(`Критическая ошибка подключения: ${error.message}`, 'error');
                 showTwaAlert(`Не удалось подключиться: ${error.message}`, true);
             } finally {
                 if (window.Telegram && Telegram.WebApp) Telegram.WebApp.showProgress(false);
             }
         }
 
-        // --- FIREBASE: СЛУШАТЕЛЬ РЕАЛЬНОГО ВРЕМЕНИ (SYNCHRONOUS) ---
+        // --- FIREBASE: REALTIME LISTENER (SYNCHRONOUS) ---
         
-        // Путь к публичному документу для обмена (приватный в рамках этого App ID)
+        // Public path for synchronization (unique to this App ID)
         const transferPath = `artifacts/${appId}/public/data/shared_data/${STORAGE_KEY}`;
 
         function startRealtimeListener() {
@@ -122,39 +123,39 @@
                 if (docSnapshot.exists()) {
                     const data = docSnapshot.data();
                     
-                    // Обновляем поле ввода, ТОЛЬКО если оно не активно (чтобы не мешать печатать)
+                    // Update input field, but ONLY if the user is not actively typing/focused
                     if (document.activeElement !== inputField) {
                         inputField.value = data.content || '';
                     }
 
-                    // Обновляем статус
-                    setStatus('Буфер синхронизирован с облаком.', 'success');
+                    // Update status
+                    setStatus('✅ Буфер мгновенно синхронизирован.', 'success');
                     
                     if (data.timestamp) {
                         const date = data.timestamp.toDate ? data.timestamp.toDate() : new Date();
                         lastUpdatedText.textContent = date.toLocaleTimeString('ru-RU', {
                             hour: '2-digit', minute: '2-digit', second: '2-digit'
-                        }) + " (Мгновенно)";
+                        });
                     } else {
                         lastUpdatedText.textContent = 'Только что создан';
                     }
 
                 } else {
-                    setStatus('Буфер пуст. Сохраните что-нибудь для обмена.', 'info');
+                    setStatus('Буфер пуст. Начните обмен данными.', 'info');
                     inputField.value = '';
                     lastUpdatedText.textContent = '--';
                 }
             }, (error) => {
-                console.error("Ошибка синхронизации:", error);
+                console.error("Synchronization error:", error);
                 setStatus(`Ошибка синхронизации данных: ${error.message}`, 'error');
             });
         }
         
-        // --- FIREBASE: СОХРАНЕНИЕ ДАННЫХ ---
+        // --- FIREBASE: SAVE DATA (TRIGGERED BY MAINBUTTON) ---
         
         async function saveContent() {
             if (!db || !userId || !isAuthReady) {
-                showTwaAlert("Сначала дождитесь инициализации приложения.", true);
+                showTwaAlert("Сначала дождитесь полной загрузки приложения.", true);
                 return;
             }
 
@@ -175,10 +176,10 @@
                     app_id: appId
                 });
                 
-                showTwaAlert('✅ Данные успешно синхронизированы на все устройства!', false);
+                showTwaAlert('🚀 Данные успешно синхронизированы на все устройства!', false);
 
             } catch (error) {
-                console.error("Ошибка сохранения данных:", error);
+                console.error("Data save error:", error);
                 setStatus(`Ошибка сохранения: ${error.message}`, 'error');
                 showTwaAlert(`Не удалось сохранить: ${error.message}`, true);
             } finally {
@@ -186,7 +187,7 @@
             }
         }
 
-        // --- КОПИРОВАНИЕ ---
+        // --- COPY FUNCTIONALITY ---
 
         async function copyToClipboard() {
             const content = inputField.value;
@@ -207,7 +208,7 @@
             }
         }
         
-        // Резервный метод копирования (для iFrame/старых браузеров)
+        // Fallback method for iFrames/older browsers
         function fallbackCopy() {
             inputField.select();
             try {
@@ -215,20 +216,20 @@
                 showTwaAlert('📋 Контент скопирован (резервный метод)!', false);
             } catch (err) {
                 showTwaAlert('Ошибка копирования. Попробуйте выделить и скопировать вручную.', true);
-                console.error('Ошибка резервного копирования:', err);
+                console.error('Fallback copy error:', err);
             }
         }
         
-        // --- ОБРАБОТЧИКИ ---
+        // --- EVENT HANDLERS ---
         
         copyButton.addEventListener('click', copyToClipboard);
 
-        // Запуск
+        // Start initialization
         window.onload = initializeFirebase;
 
     </script>
     <style>
-        /* Переменные TWA */
+        /* TWA Variables */
         :root {
             --bg-color: #1a1a1a;
             --text-color: #f4f4f5;
@@ -244,30 +245,32 @@
         }
         
         .app-container {
+            /* TWA-like card style */
             background-color: #27272a; 
             border: 1px solid #3f3f46;
         }
         .textarea-custom {
-            min-height: 350px; 
+            /* Large, dark, high-contrast input */
+            min-height: 400px; 
             background-color: #18181b; 
             color: var(--text-color); 
             border-color: #4b5563;
+            font-size: 16px; /* Larger font for readability */
         }
         
-        /* Кнопки, которые остаются в HTML */
-        .html-button {
-            background-color: #6366f1;
-            color: white;
-            transition: background-color 0.3s;
+        /* Copy button style (uses standard Tailwind classes) */
+        .copy-button {
+            background-color: #4ade80; /* Green-400 */
+            color: #1a1a1a;
         }
-        .html-button:hover {
-            background-color: #4f46e5;
+        .copy-button:hover {
+            background-color: #16a34a; /* Green-600 */
         }
         
-        /* Стилизация для мобильных устройств */
+        /* Mobile optimization */
         @media (min-width: 640px) {
             .textarea-custom {
-                min-height: 500px;
+                min-height: 550px;
             }
         }
     </style>
@@ -275,42 +278,42 @@
 <body class="p-4 md:p-8 min-h-screen flex flex-col items-center">
 
     <div class="max-w-3xl w-full">
-        <h1 class="text-2xl md:text-3xl font-bold text-center text-indigo-400 mb-6 pb-2">
-            🚀 Общий Буфер Кода (IMBA Sync)
+        <h1 class="text-2xl md:text-3xl font-extrabold text-center text-yellow-300 mb-6 pb-2 border-b border-yellow-300/50">
+            ⭐ ULTIMATE TWA SYNC PORTAL ⭐
         </h1>
-        <p id="disclaimer" class="text-center text-sm text-gray-400 mb-6">
-            Ваш личный буфер, синхронизированный между всеми вашими устройствами.
+        <p class="text-center text-sm text-gray-400 mb-6">
+            Ваш личный, мгновенный, зашифрованный буфер обмена между ПК и Телефоном.
         </p>
 
         <!-- Рабочая карточка -->
         <div class="app-container p-5 md:p-8 rounded-2xl shadow-2xl">
-            <label for="content-input" class="block text-lg font-semibold text-gray-200 mb-3">
+            <label for="content-input" class="block text-xl font-semibold text-gray-100 mb-3">
                 Рабочая область (до 100K символов):
             </label>
             <textarea id="content-input" 
                       maxlength="100000"
-                      placeholder="Вставьте текст или код сюда..."
-                      class="textarea-custom w-full p-4 rounded-xl border-2 focus:ring-indigo-500 focus:border-indigo-500 text-base shadow-inner resize-none">
+                      placeholder="Вставьте текст или код сюда. Сохраните через синюю кнопку внизу экрана..."
+                      class="textarea-custom w-full p-4 rounded-xl border-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-inner resize-none">
             </textarea>
             
-            <!-- Кнопка Копировать (остается в HTML, т.к. используется для всего поля) -->
+            <!-- Кнопка Копировать -->
             <div class="mt-4">
                 <button id="copy-button" 
-                        class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl transition duration-300 shadow-lg">
-                    📋 Копировать Весь Контент
+                        class="copy-button w-full font-bold py-4 rounded-xl transition duration-300 shadow-lg text-lg">
+                    📋 МГНОВЕННО СКОПИРОВАТЬ ВЕСЬ КОНТЕНТ
                 </button>
             </div>
             
         </div>
         
         <!-- Секция статуса -->
-        <div class="mt-4 flex flex-col sm:flex-row justify-between items-center text-xs">
-            <p class="text-gray-500">Последнее обновление: <span id="last-updated">--</span></p>
+        <div class="mt-4 flex flex-col sm:flex-row justify-between items-start text-xs">
+            <p class="text-gray-500 text-sm">Последнее обновление: <span id="last-updated" class="text-gray-300">--</span></p>
             <p id="status-text" class="text-sm mt-2 sm:mt-0 text-gray-400">Инициализация...</p>
         </div>
         
-        <p class="text-xs text-center text-gray-600 mt-8">
-            Сохранение выполняется через нативную синюю кнопку Telegram внизу экрана.
+        <p class="text-sm text-center text-indigo-400 mt-8">
+            🔔 Кнопка **"СОХРАНИТЬ И СИНХРОНИЗИРОВАТЬ"** находится внизу экрана (в Telegram).
         </p>
 
     </div>
