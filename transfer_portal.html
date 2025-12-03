@@ -109,7 +109,7 @@
                  return;
             }
             
-            // Проверка на существование showProgress перед вызовом! (Fixes the crash)
+            // 🛑 ИСПРАВЛЕНИЕ: Проверка на существование showProgress перед вызовом!
             const twaShowProgress = window.Telegram && Telegram.WebApp && Telegram.WebApp.showProgress;
 
             try {
