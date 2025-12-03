@@ -3,98 +3,127 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Приватный Локальный Буфер</title>
-    <!-- Tailwind CSS для стилей -->
+    <title>Приватный Буфер Кода</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Telegram Web App API (для тёмной темы и обратной связи) -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #1e293b; /* Темный фон для приватности */
-            color: #f8fafc;
+            /* Цвет фона будет установлен из TWA API, но дадим тёмный дефолт */
+            background-color: #1a1a1a; 
+            color: #e0e0e0;
+            transition: background-color 0.3s;
         }
-        .container-card {
-            background-color: #334155; /* Карточка немного светлее фона */
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+        .app-container {
+            /* Тёмный, приподнятый контейнер */
+            background-color: #27272a; 
+            border: 1px solid #3f3f46;
         }
         .textarea-custom {
-            /* Увеличиваем вместимость и контраст */
-            min-height: 400px; 
-            background-color: #1f2937; 
-            color: #d1d5db; 
-            border-color: #475569;
+            /* Стили для поля ввода */
+            min-height: 300px; 
+            background-color: #18181b; 
+            color: #f4f4f5; 
+            border-color: #4b5563;
+        }
+
+        /* Применяем цветовую схему TWA, если доступно */
+        :root[data-color-scheme="dark"] {
+            /* TWA Dark Mode */
+        }
+        :root[data-color-scheme="light"] {
+            /* TWA Light Mode (на всякий случай) */
+            background-color: #f3f4f6;
+            color: #1f2937;
         }
     </style>
 </head>
-<body class="p-4 md:p-8 min-h-screen">
+<body class="p-4 md:p-8 min-h-screen flex flex-col items-center">
 
-    <div class="max-w-4xl mx-auto">
-        <h1 class="text-3xl font-bold text-center text-indigo-400 mb-6 border-b border-indigo-500/50 pb-2">
-            🔒 Локальный Буфер (Только Ваш)
+    <div class="max-w-3xl w-full">
+        <h1 class="text-2xl md:text-3xl font-bold text-center text-indigo-400 mb-6 pb-2">
+            Буфер Кода/Текста 🔐
         </h1>
-        <p class="text-center text-sm text-gray-400 mb-6">
-            Данные хранятся только в браузере этого устройства. **Немедленной синхронизации между ПК и телефоном нет** - используйте кнопки "Вставить" и "Копировать" для переноса.
+        <p id="disclaimer" class="text-center text-sm text-gray-400 mb-6">
+            Ваши данные хранятся **только в браузере этого устройства**. Для переноса между ПК и телефоном, используйте функцию "Копировать" и "Вставить" вручную.
         </p>
 
-        <!-- Основная карточка для ввода/отображения -->
-        <div class="container-card p-6 rounded-xl shadow-2xl">
+        <!-- Рабочая карточка -->
+        <div class="app-container p-5 md:p-8 rounded-2xl shadow-2xl">
             <label for="content-input" class="block text-lg font-semibold text-gray-200 mb-3">
-                Рабочая область:
+                Рабочая область (100.000 символов):
             </label>
             <textarea id="content-input" 
                       maxlength="100000"
-                      class="textarea-custom w-full p-4 border-2 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 text-base shadow-inner resize-none">
+                      class="textarea-custom w-full p-4 rounded-xl border-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 text-base shadow-inner resize-none">
             </textarea>
-            <p class="text-right text-xs text-gray-400 mt-1">
-                Максимум: 100,000 символов
-            </p>
             
-            <div class="flex flex-col sm:flex-row gap-4 mt-4">
+            <!-- Группа кнопок -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
+                
                 <button id="save-button" 
-                        class="w-full sm:w-1/3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition duration-300 shadow-lg flex items-center justify-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-6 4l2 2m0 0l2-2m-2 2V3"></path></svg>
-                    Сохранить Локально
+                        class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition duration-300 shadow-md">
+                    💾 Сохранить Локально
                 </button>
+
                 <button id="load-button" 
-                        class="w-full sm:w-1/3 bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 rounded-xl transition duration-300 shadow-lg flex items-center justify-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                    Загрузить Локально
+                        class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 rounded-xl transition duration-300 shadow-md">
+                    🔄 Загрузить (Из Памяти)
                 </button>
+                
                 <button id="copy-button" 
-                        class="w-full sm:w-1/3 bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl transition duration-300 shadow-lg flex items-center justify-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                    Копировать Все
+                        class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl transition duration-300 shadow-md">
+                    📋 Копировать Все
                 </button>
             </div>
             
         </div>
         
         <!-- Секция статуса -->
-        <div id="status-message" class="mt-6 text-center text-sm p-3 rounded-lg border">
-            Добро пожаловать. Вставьте и сохраните ваш код.
+        <div id="status-message" class="mt-6 text-center text-sm p-3 rounded-lg border bg-blue-800/20 text-blue-300 border-blue-500 w-full">
+            Добро пожаловать!
         </div>
 
     </div>
 
     <script>
-        const STORAGE_KEY = 'privateTransferBuffer';
+        const STORAGE_KEY = 'privateTwaTransferBuffer';
         const inputField = document.getElementById('content-input');
         const saveButton = document.getElementById('save-button');
         const loadButton = document.getElementById('load-button');
         const copyButton = document.getElementById('copy-button');
         const statusMessage = document.getElementById('status-message');
 
-        // --- УТИЛИТЫ ---
-        
-        // Отображение статуса
+        // --- УТИЛИТЫ TWA ---
+
+        // Установка статуса с TWA-уведомлением
         function setStatus(text, type = 'info') {
             let bgColor = 'bg-blue-800/20 text-blue-300 border-blue-500';
             if (type === 'success') bgColor = 'bg-green-800/20 text-green-300 border-green-500';
             if (type === 'error') bgColor = 'bg-red-800/20 text-red-300 border-red-500';
             
-            statusMessage.className = `mt-6 text-center text-sm p-3 rounded-lg border ${bgColor}`;
+            statusMessage.className = `mt-6 text-center text-sm p-3 rounded-lg border w-full ${bgColor}`;
             statusMessage.textContent = text;
+            
+            // Используем TWA API для кратких уведомлений (более заметно на телефоне)
+            if (window.Telegram && Telegram.WebApp) {
+                Telegram.WebApp.showPopup({
+                    message: text,
+                    buttons: [{ text: 'OK' }]
+                });
+            }
         }
+        
+        // Применяем цвета TWA для бесшовного дизайна
+        if (window.Telegram && Telegram.WebApp) {
+            Telegram.WebApp.ready();
+            document.body.style.backgroundColor = Telegram.WebApp.themeParams.bg_color;
+            document.documentElement.setAttribute('data-color-scheme', Telegram.WebApp.colorScheme);
+        }
+
 
         // --- ЛОКАЛЬНАЯ ЛОГИКА ---
         
@@ -119,7 +148,6 @@
         function saveContent() {
             const content = inputField.value;
             try {
-                // Проверяем лимит (хотя браузеры делают это сами)
                 if (content.length > 100000) {
                      setStatus('Слишком много символов (Максимум 100,000).', 'error');
                      return;
@@ -127,33 +155,35 @@
                 localStorage.setItem(STORAGE_KEY, content);
                 setStatus('Контент успешно сохранен в локальную память устройства!', 'success');
             } catch (e) {
-                // Часто возникает, если память переполнена
                 setStatus('Ошибка сохранения. Память устройства переполнена или произошла ошибка.', 'error');
                 console.error('Ошибка сохранения localStorage:', e);
             }
         }
 
         // Копирование всего текста в буфер обмена
-        function copyToClipboard() {
-            inputField.select(); // Выделяем весь текст
+        async function copyToClipboard() {
+            const content = inputField.value;
             
-            // Предпочитаем современный API
             if (navigator.clipboard && navigator.clipboard.writeText) {
-                 navigator.clipboard.writeText(inputField.value)
-                    .then(() => setStatus('Весь контент скопирован в буфер обмена!', 'success'))
-                    .catch(() => fallbackCopy());
+                try {
+                    await navigator.clipboard.writeText(content);
+                    setStatus('Весь контент скопирован в буфер обмена!', 'success');
+                } catch (err) {
+                    fallbackCopy();
+                }
             } else {
-                // Резервный метод для старых браузеров или специфических сред (как iFrame)
                 fallbackCopy();
             }
         }
         
+        // Резервный метод копирования (для iFrame/старых браузеров)
         function fallbackCopy() {
-             try {
+            inputField.select();
+            try {
                 document.execCommand('copy');
                 setStatus('Весь контент скопирован (резервный метод)!', 'success');
             } catch (err) {
-                setStatus('Ошибка копирования. Используйте Ctrl+C / Command+C.', 'error');
+                setStatus('Ошибка копирования. Попробуйте выделить и скопировать вручную.', 'error');
                 console.error('Ошибка резервного копирования:', err);
             }
         }
