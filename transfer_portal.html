@@ -84,7 +84,8 @@
                 if (isError) {
                     Telegram.WebApp.showAlert(`❌ Ошибка: ${message}`);
                 } else {
-                    Telegram.WebApp.showAlert(`✅ Успех: ${message}`);
+                    // Убираем префикс "Успех" для более чистого отображения в TWA
+                    Telegram.WebApp.showAlert(message);
                 }
             } else {
                 console.log(message);
